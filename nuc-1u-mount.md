@@ -13,6 +13,18 @@ Regenerate after any edit:
     --console nuc-1u-mount.py < /dev/null
 ```
 
+The generated `.FCStd` and everything in `export/` are gitignored — they rebuild
+exactly from the .py, which has no nondeterminism in it. To pin the STL you
+actually sent to the printer for some revision, `git add -f` it.
+
+## Revisions
+
+- **v1** — first printed and test-fitted. M3 spacing confirmed at 85 mm; holes
+  were on the wrong axis, then rotated to fore/aft at y = 21 / 106.
+- **v2** — NUC moved 2 mm forward (port recess 7.5 → 5.5), tail shortened from
+  y = 123.5 to y = 112, rear stops deleted because they fouled the HDMI and DC
+  connectors. Mount holes follow the NUC to y = 19 / 104.
+
 ## Mounting screws
 
 85 mm centre distance, **confirmed on the printed part**, on a **fore/aft axis**:
@@ -21,35 +33,22 @@ airflow grid. Read back off the solid:
 
 | | x | y |
 |---|---|---|
-| front slot | 140.0 (centre), 128–152 travel | **21.0** |
-| rear slot | 140.0 (centre), 128–152 travel | **106.0** |
+| front slot | 140.0 (centre), 128–152 travel | **19.0** |
+| rear slot | 140.0 (centre), 128–152 travel | **104.0** |
 
-Spacing measured on the geometry: 85.000 mm along Y, 0.000 mm along X.
+Spacing measured on the geometry: 85.000 mm along Y, 0.000 mm along X. (These
+moved 2 mm forward in v2 along with the NUC — on v1 they were at 21.0 and 106.0.)
 
-Each slot is elongated 24 mm **across** the rack now, since the fore/aft spacing
-is the known quantity and the transverse position is the one with slack. If the
+Each slot is elongated 24 mm **across** the rack, since the fore/aft spacing is
+the known quantity and the transverse position is the one with slack. If the
 pair turns out not to be centred on the NUC's depth, set `M3_OFFSET_Y` in the .py
 to shift both together — the spacing stays locked at `M3_SPACING`.
-
-### Salvaging the part you already printed
-
-You don't have to reprint. On the old part the floor is solid at both new
-locations (the previous openings ran y 30.5–62.5 and 68.5–100.5, and x 140 is the
-central rib), so you can just drill it:
-
-- two Ø3.4 holes on the tray centreline — i.e. midway across the floor
-- **21.0 mm and 106.0 mm** back from the panel's front face, or equivalently
-  **102.5 mm and 17.5 mm** forward from the rear edge of the tray floor
-- countersink from underneath with a 6 mm bit, 1.3 mm deep, so the flat head
-  finishes flush with the 2.8 mm floor
-
-The two old slots stay as spare holes — harmless, and handy for cable ties.
 
 ## Parts
 
 | | size | notes |
 |---|---|---|
-| `PartA_NUC_tray` | 251.0 × 125.5 × 43.6 | left half + NUC cradle, 80 cm³ |
+| `PartA_NUC_tray` | 251.0 × 114.0 × 43.6 | left half + NUC cradle, 72 cm³ |
 | `PartB_filler` | 251.0 × 43.6 × 5.0 | right half, vented blank, 39 cm³ |
 | `TestCoupon_M3` | 58 × 119 × 12 | throwaway hole-pattern gauge |
 
@@ -93,31 +92,38 @@ Both parts are already oriented in the STLs — **do not rotate them**.
 
 - NUC pocket 118.2 mm wide, 0.6 mm per side on a 117 mm chassis
 - NUC sits z = 2.8 → 39.8, panel top at 43.6, so **3.8 mm of air above it**
-- Front face sits 7.5 mm behind the panel front (5 mm panel + 2.5 mm haunch) and
-  is exposed through a 118.2 × 37.2 window. Only the bottom 0.05 % of the face
-  is masked, by the haunch. Power button and both USB-A are clear; a USB plug
-  reaches into a 7.5 mm recess without trouble.
-- Verified by boolean intersection: zero collision between the NUC envelope and
+- Front face sits **5.5 mm** behind the panel front — the panel thickness plus
+  0.5 mm of clearance, nothing more. Measured masking of the chassis front face
+  through the window: **0.00 %**.
+- **Nothing behind the tray.** The floor stops at y = 112, which is 5 mm of solid
+  material behind the rear countersink and **5.5 mm ahead of the NUC's own rear
+  face**. The rear stops are gone. Verified by intersecting a 60 mm deep box
+  spanning the full rack behind y = 112: zero material.
+- Verified by boolean intersection: zero collision between the chassis body and
   part A, zero interference between the two halves, nothing outside the 1U
   envelope, nothing below z = 0.
 
-**Keep the rubber feet on.** The NUC 11 draws intake air through its base; the
-feet hold it 3 mm off the tray floor and the floor is cut open underneath. Take
-them off and you close the plenum.
+**Keep the rubber feet on.** Two reasons now. The NUC 11 draws intake air through
+its base, and the feet hold it 3 mm off the floor over the cut-open plenum — and
+the junction haunch runs *under* the front lip of the chassis, in that same 3 mm
+gap. `NUC_FOOT_H = 3.0` in the .py is the assumption; the haunch is only 1.5 mm
+tall across the pocket, so there's 1.5 mm of margin if your feet are shorter than
+I think. Take the feet off and the NUC will sit on the haunch.
 
 ## Panel-to-tray reinforcement
 
 Three things tie the vertical panel to the horizontal tray, all at 45° so none
 of them need support material:
 
-1. **Haunch** — a 2.5 mm fillet running the entire length of the panel/floor
-   junction, full tray width. Kills the sharp inside corner, which is where a
-   printed part in this shape actually cracks.
+1. **Haunch** — a 45° fillet along the entire panel/floor junction. 2.5 mm tall
+   outboard of the NUC where it has room, dropping to 1.5 mm across the pocket
+   so it tucks under the chassis in the gap the rubber feet leave. Kills the
+   sharp inside corner, which is where a printed part in this shape cracks.
 2. **Corner webs** — 9 mm thick, 28 mm tall triangular gussets outboard of the
    NUC on both sides, from the panel back face down to the floor.
-3. **Side walls** — the old 7 mm rail segments are now continuous 14 mm walls
-   running the full depth, so the tray is a channel section instead of a flat
-   plate. Each is pierced by three 12 × 7 slots so air can still cross.
+3. **Side walls** — continuous 14 mm walls running the full depth, so the tray is
+   a channel section rather than a flat plate. Each is pierced by three 12 × 7
+   slots so air can still cross.
 
 Section properties measured off the solid (not estimated), against a bare
 2.8 × 136.2 plate as reference, 504 g acting at the NUC's mid-depth, PETG at
@@ -125,14 +131,13 @@ E = 2 GPa:
 
 | section | I (mm⁴) | vs. bare plate | tip sag |
 |---|---|---|---|
-| bare plate | 249 | 1× | 1.47 mm |
-| y = 10 (in the webs) | 51 500 | 207× | 0.007 mm |
-| y = 25 | 8 190 | 33× | 0.045 mm |
-| y = 63 (mid-span) | 6 398 | 26× | 0.057 mm |
-| y = 115 (rear) | 6 478 | 26× | 0.056 mm |
+| bare plate | 249 | 1× | 1.41 mm |
+| y = 8 (in the webs) | 63 570 | 255× | 0.006 mm |
+| y = 25 | 8 191 | 33× | 0.043 mm |
+| y = 61.5 (mid-span) | 6 478 | 26× | 0.054 mm |
+| y = 108 (rear) | 6 478 | 26× | 0.054 mm |
 
-So ~0.06 mm of sag across the whole tray, before the NUC is even bolted down.
-Cost: +15 cm³ of filament and 2.5 mm more port recess.
+~0.05 mm of sag across the whole tray, before the NUC is even bolted down.
 
 ## Known soft spots
 

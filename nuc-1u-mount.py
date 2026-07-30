@@ -57,7 +57,11 @@ NUC_CX = 140.0            # where it sits across the panel (inside part A)
 
 FLOOR_T = 2.80
 FLOOR_MARGIN_X = 6.0
-FLOOR_REAR = 4.0          # floor sticking out behind the NUC
+FLOOR_TAIL = 5.0          # solid floor left behind the rear countersink; the
+                          # tray stops there rather than following the NUC back,
+                          # so nothing crowds the rear I/O
+NUC_FOOT_H = 3.00         # rubber feet: the chassis body floats this far above
+                          # the tray floor, which is what the haunch tucks under
 
 # --- bottom mounting screws ------------------------------------------------
 # Two M3 screws in the base of the NUC (the VESA bracket points).  85 mm centre
@@ -78,27 +82,33 @@ RAIL_H = 14.00            # continuous side walls -> the tray is a channel secti
 RAIL_VENT = (12.0, 7.0)   # slot through each rail, so air can still cross
 
 # panel <-> tray reinforcement
-FILLET_H = 2.50           # 45 deg haunch along the whole junction
+FILLET_H = 2.50           # 45 deg haunch, outboard of the NUC where it is free
+FILLET_H_NUC = 1.50       # ...and across the pocket, where it tucks under the
+                          # chassis in the gap the feet leave (needs < NUC_FOOT_H)
 GUSSET_H = 28.00          # corner webs, outboard of the NUC on both sides
+NUC_GAP_Y = 0.50          # clearance from the panel back face to the NUC front
 VENT_W = 4.00
 VENT_PITCH = 9.00
 
 NUC_X0 = NUC_CX - (NUC_W + 2 * NUC_FIT) / 2.0
 NUC_X1 = NUC_CX + (NUC_W + 2 * NUC_FIT) / 2.0
-# the NUC is held back by the thickness of the junction haunch, so its front
-# face clears it.  Costs 2.5 mm of extra port recess, buys a filleted corner.
-NUC_Y0 = PANEL_T + FILLET_H
+# the NUC now sits right up against the panel; the haunch passes underneath it
+# rather than in front of it, so the port recess is just the panel + 0.5.
+NUC_Y0 = PANEL_T + NUC_GAP_Y
 NUC_Y1 = NUC_Y0 + NUC_D
 NUC_Z0 = FLOOR_T
 NUC_Z1 = NUC_Z0 + NUC_H
+NUC_BODY_Z0 = NUC_Z0 + NUC_FOOT_H     # underside of the chassis proper
 
 FLOOR_X0 = NUC_X0 - RAIL_T - FLOOR_MARGIN_X
 FLOOR_X1 = NUC_X1 + RAIL_T + FLOOR_MARGIN_X
-FLOOR_Y1 = NUC_Y1 + FLOOR_REAR
 
 # mounting slot centres: on the tray centreline, fore and aft
 M3_MID_Y = (NUC_Y0 + NUC_Y1) / 2.0 + M3_OFFSET_Y
 M3_Y = (M3_MID_Y - M3_SPACING / 2.0, M3_MID_Y + M3_SPACING / 2.0)
+
+# the tray ends just behind the rear screw, not behind the NUC
+FLOOR_Y1 = M3_Y[1] + M3_HEAD_R + FLOOR_TAIL
 
 # airflow openings in the tray floor, kept clear of the NUC's rubber feet and
 # of the fore/aft mounting slots
@@ -107,7 +117,7 @@ VENT_HOLES_Y = tuple((NUC_Y0 + a, NUC_Y0 + b) for a, b in ((22.5, 52.5), (59.5, 
 
 WIN_X0 = NUC_X0
 WIN_X1 = NUC_X1
-WIN_Z0 = NUC_Z0 + FILLET_H      # window starts above the haunch
+WIN_Z0 = NUC_Z0 + FILLET_H_NUC  # window starts above the haunch
 WIN_Z1 = NUC_Z1 + 0.2
 
 
@@ -233,15 +243,15 @@ def build_part_a():
     for xr in (NUC_X0 - RAIL_T, NUC_X1):
         s = s.fuse(box(xr, NUC_Y0, FLOOR_T, RAIL_T, FLOOR_Y1 - NUC_Y0, RAIL_H))
 
-    # haunch along the entire panel/floor junction, and a deep corner web
-    # outboard of the NUC on each side
-    s = s.fuse(web(FLOOR_X0, FLOOR_X1 - FLOOR_X0, FILLET_H))
+    # haunch along the entire panel/floor junction: full height outboard of the
+    # NUC, reduced across the pocket so it slips under the chassis
+    s = s.fuse(web(NUC_X0, NUC_X1 - NUC_X0, FILLET_H_NUC))
+    # deep corner web outboard of the NUC on each side
     s = s.fuse(web(FLOOR_X0, NUC_X0 - FLOOR_X0, GUSSET_H))
     s = s.fuse(web(NUC_X1, FLOOR_X1 - NUC_X1, GUSSET_H))
 
-    # rear stops
-    for xs in (NUC_CX - 45, NUC_CX + 25):
-        s = s.fuse(box(xs, NUC_Y1 + 0.5, FLOOR_T, 20.0, 3.0, RAIL_H))
+    # no rear stops: they fouled the HDMI and DC connectors.  The two screws
+    # locate the NUC fore/aft on their own.
 
     cuts = []
 
@@ -390,9 +400,20 @@ def main():
                      "OK" if NUC_Z1 < PANEL_H else "FAIL"))
     chk("side wall top below NUC top", FLOOR_T + RAIL_H, NUC_Z1 - 20.0, 6.0)
     chk("corner web top below panel top", FLOOR_T + GUSSET_H, PANEL_H - 10.0, 5.0)
+
+    # the haunch now runs under the chassis, so it has to clear the foot gap
+    haunch_gap = NUC_BODY_Z0 - (FLOOR_T + FILLET_H_NUC)
     checks.append("%-42s %10.3f  (want %8.3f)  %s"
-                  % ("haunch clear of NUC front face", NUC_Y0 - PANEL_T, FILLET_H,
-                     "OK" if NUC_Y0 - PANEL_T >= FILLET_H else "FAIL"))
+                  % ("haunch under chassis, clearance", haunch_gap, 0.5,
+                     "OK" if haunch_gap >= 0.5 else "FAIL"))
+    chk("port recess (panel face to NUC face)", NUC_Y0, PANEL_T + NUC_GAP_Y, 0.001)
+    checks.append("%-42s %10.3f  (want %8.3f)  %s"
+                  % ("floor tail behind rear countersink",
+                     FLOOR_Y1 - (M3_Y[1] + M3_HEAD_R), FLOOR_TAIL,
+                     "OK" if FLOOR_Y1 - (M3_Y[1] + M3_HEAD_R) >= FLOOR_TAIL - 1e-6 else "FAIL"))
+    checks.append("%-42s %10.3f  (want %8s)  %s"
+                  % ("tray stops ahead of NUC rear face", NUC_Y1 - FLOOR_Y1, "> 0",
+                     "OK" if FLOOR_Y1 < NUC_Y1 else "FAIL"))
 
     # M3 countersinks (now fore/aft) must not break into the airflow openings,
     # and must stay on solid floor
